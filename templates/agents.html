@@ -1,0 +1,12 @@
+<html>
+    <body>
+        <h1>list of Agents are:</h1>
+
+        {% for i in computers %}
+        <h2> {{i}}</h2>
+        <h2> {{ips[computers.index(i)]}}</h2>
+        
+        <a href="http://127.0.0.1:5000/{{i}}/executecmd"> Execute command in {{i}}</a>
+        {% endfor %}
+    </body>
+</html>
