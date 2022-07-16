@@ -156,4 +156,4 @@ def execute(agentname,cmdoutput='',cmd_input=""):
         return render_template("executecmd.html",name=agentname,cmdoutput=cmdoutput,cmd_input=cmd_input)
 
 if __name__=='__main__':
-    app.run(debug=True,threaded=True)
+    app.run(debug=True,threaded=True,ssl_context=('cert.pem', 'key.pem'))
