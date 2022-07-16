@@ -1,7 +1,5 @@
 import socket
 import subprocess
-import shutil
-from pathlib import Path
 import time 
 
 ip_address = '127.0.0.1'
