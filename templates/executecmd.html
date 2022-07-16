@@ -1,19 +1,43 @@
 <html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>{{agentname}}</title>
+    <!-- BOOTSTRAP 4 -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootswatch/4.3.1/lux/bootstrap.min.css">
+    <!-- FONTS -->
+    <link href="https://fonts.googleapis.com/css?family=Lobster&display=swap" rel="stylesheet">
+    <!-- MAIN CSS -->
+    <link rel="stylesheet" href="{{url_for('static', filename='main.css')}}">
+
     <body>
-        Execute Commands here
-
-        <form action="http://127.0.0.1:5000/{{name}}/executecmd" method="POST">
-            <p> Enter command: </p>
-            <input type="text" name="command">
-            <input type="submit">
-        </form>
-
-        <h4>
-            Response:
-        </h4>
-        <pre>
-            {{cmdoutput}}
-        </pre>
+	
+	<main class="container-fluid">
+		
+            <div class="col-sm offset-sm my-auto center">
+				<div class=fakeMenu>
+					<div class="fakeButtons fakeClose"></div>
+					<div class="fakeButtons fakeMinimize"></div>
+					<div class="fakeButtons fakeZoom"></div>
+				</div>	
+				<div class="fakeScreen">
+					<p> 
+					<form class="contact-form" action="http://127.0.0.1:5000/{{name}}/executecmd" method="POST">
+						 <label> ~$<input type="text" name="command" autofocus><span class="cursor4">_</span></label>
+					</form> 
+					</p>
+					{% if cmdoutput != ''%}
+						<p class="line3">>>> {{cmd_input}}</p>
+						{% for row in cmdoutput.split('\n') %}
+							<p class="line2"> {{row}} </p>
+						{% endfor %}
+					{% endif %}	
+					
+				</div>
+			
+			</div>
+	</main>
     </body>
 
 </html>

