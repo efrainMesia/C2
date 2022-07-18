@@ -9,7 +9,7 @@ port_number = 5555
 packet_size = 2048
 hostname = socket.gethostname()
 purpose = ssl.Purpose.SERVER_AUTH
-context = ssl.create_default_context(purpose, cafile='ca.crt')
+context = ssl.create_default_context(purpose, cafile='certificates\\ca.crt')
 
 
 
@@ -43,6 +43,9 @@ print('Connected to host {!r} and port {}'.format(ip_address, port_number))
 
 
 ssl_sock = context.wrap_socket(client_socket, server_hostname='localhost')
+
+#ssl_sock.connect((ip_address,port_number))
+#pprint.pprint(ssl_sock.getpeercert())
 ssl_sock.send(hostname.encode())
 
 
@@ -65,7 +68,8 @@ while cmd!=['bye']:
         if not msg:
             msg =str(error.decode())
         ssl_sock.send(msg.encode())
-    print('waiting for input from SRV')
+        print(cmd)
+        print('waiting for input from SRV')
     cmd = list(ssl_sock.recv(packet_size).decode().split(" "))
 
 ssl_sock.close()

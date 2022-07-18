@@ -8,8 +8,8 @@ ip_address ='127.0.0.1'
 port_number = 5555
 packet_size = 2048
 
-CMD_INPUT = []
-CMD_OUTPUT = []
+#CMD_INPUT = []
+#CMD_OUTPUT = []
 
 Conns = {}
 HELP_COMMANDS = ['?','HELP','help']
@@ -18,7 +18,7 @@ HELP = 'Send Windows\\ Linux commands. \n you can also send files to minion with
 
 #Creates context and loads the certificate
 context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-context.load_cert_chain(certfile="localhost.pem")
+context.load_cert_chain(certfile="certificates\\localhost.pem")
 
 
 app = Flask(__name__)
@@ -55,9 +55,11 @@ def server():
             connection_status['Port'] = address[1]
             connection_status['Hostname'] = hostname
             connection_status['Index'] = INDEX
+            connection_status['cmd_input'] = ""
+            connection_status['cmd_output'] =""
             Conns[sconnection] = connection_status
-            CMD_INPUT.append("")
-            CMD_OUTPUT.append("")
+            #CMD_INPUT.append("")
+            #CMD_OUTPUT.append("")
             INDEX= INDEX +1
             app.logger.info(f'Going to handle the new connection...')
             t=threading.Thread(target=handle_connection,args=(sconnection,))
@@ -96,34 +98,34 @@ def recv_file(socket,filename):
 '''Handle the connection, this function is triggered by the server and be responsible to send commands to clients'''
 #todo - remove thread index. its not needed.
 def handle_connection(connection):
-    thread_index = Conns[connection]['Index']
-
-    while CMD_INPUT[thread_index] != 'bye':
-        while CMD_INPUT[thread_index]!='':
+    cmd_input = Conns[connection]['cmd_input']
+    while cmd_input != 'bye':
+        while cmd_input!='':
             try:
-                usr_msg = CMD_INPUT[thread_index]
+                usr_msg = cmd_input
                 #app.logger.info(f"Send command **{usr_msg}** to {Conns[connection]['Hostname']}")
                 connection.send(usr_msg.encode())
 
-                if CMD_INPUT[thread_index].split(" ")[0] =='download':
+                if cmd_input.split(" ")[0] =='download':
                     app.logger.debug('Download command has been detected ')
-                    send_file(connection,CMD_INPUT[thread_index].split(" ")[1])
-                    CMD_INPUT[thread_index]=''
+                    send_file(connection,cmd_input.split(" ")[1])
+                    
 
-                elif CMD_INPUT[thread_index].split(" ")[0] =='upload':
+                elif cmd_input.split(" ").split(" ")[0] =='upload':
                     app.logger.debug('Upload command has been detected ')
-                    recv_file(connection,CMD_INPUT[thread_index].split(" ")[-1])
-                    CMD_INPUT[thread_index]=''
+                    recv_file(connection,cmd_input.split(" ")[-1])
+                    
 
-                elif CMD_INPUT[thread_index] !='bye':            
+                elif cmd_input !='bye':            
                     usr_msg=connection.recv(packet_size).decode()
                     app.logger.debug(f"Reveiced from {Conns[connection]['Hostname']} --> {usr_msg}")
-                    CMD_OUTPUT[thread_index]=usr_msg
-                    CMD_INPUT[thread_index]=''
+                    Conns[connection]['cmd_output']=usr_msg
+                
+                cmd_input=''
                 break
 
             except ConnectionResetError:
-                CMD_OUTPUT[thread_index]='Client has been disconnected, go to Main Page'
+                Conns[connection]['cmd_output']='Client has been disconnected, go to Main Page'
                 del Conns[connection]
     app.logger.debug(f"Bye command has been detected, disconnecting from {Conns[connection]['Hostname']}")
     del Conns[connection]
@@ -145,23 +147,22 @@ def execute(agentname,cmdoutput='',cmd_input=""):
         app.logger.debug('Command has been posted')
         cmd = request.form['command']
         app.logger.info(f'Command received --> {cmd}')
-        for _,val in Conns.items():
+        for conn,val in Conns.items():
             print(val)
             print(agentname)
             if agentname == val['Hostname']:
-                req_index = val['Index']
-                break
+                connection = conn
 
         if cmd in HELP_COMMANDS:
             cmdoutput=HELP
             return render_template("executecmd.html",cmdoutput=cmdoutput.strip(),name=agentname)
 
-        CMD_INPUT[req_index] = cmd.strip()
+        Conns[connection]['cmd_input'] = cmd.strip()
         time.sleep(2)
         if cmd == 'bye':
             return redirect("/")
         else:
-            cmdoutput = CMD_OUTPUT[req_index]
+            cmdoutput = Conns[connection]['cmd_output']
             print(cmdoutput)
             return render_template('executecmd.html',cmdoutput=cmdoutput.strip(),name=agentname,cmd_input=cmd)
 
