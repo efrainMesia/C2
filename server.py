@@ -4,7 +4,7 @@ import threading
 import time
 from flask import *
 
-ip_address ='127.0.0.1'
+ip_address ='0.0.0.0'
 port_number = 5555
 packet_size = 2048
 
