@@ -14,6 +14,7 @@ if($runningAsAdmin){
 }
 else{
   Write-Host "Please run this script as Administrator"
+  $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown');
 }
 
 
